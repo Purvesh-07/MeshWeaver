@@ -117,7 +117,8 @@ class Tasks:
     async def _on_offer(self, msg, addr):
         # answer: can you take one more task? (a small queue is allowed)
         busy = self.node.running_tasks >= self.cfg.task_slots * 2
-        return ('TASK_REJECT' if busy else 'TASK_ACCEPT'), {}
+        return ('TASK_REJECT' if busy else 'TASK_ACCEPT'), 
+        {}
 
     # ================= submitter side: we send a task =================
     async def run_remote(self, addr, func, args, kwargs, timeout=30.0, task_id=None):
@@ -150,3 +151,35 @@ class Tasks:
         if env['body']['ok']:
             return cloudpickle.loads(data)           # safe: signature and hash were checked
         raise RemoteTaskError(data.decode(errors='replace'))
+
+    # ================= routing =================
+
+    async def _choose(self, excluded):
+        for nid, entry in self.gossip.ranked(excluded, self.inflight):
+            addr = tuple(entry['addr'])
+
+            if nid == self.node.hex_id:
+                return nid, addr
+
+            reply = await self.node.request(addr, 'TASK_OFFER', {})
+
+            if reply and reply['type'] == 'TASK_ACCEPT':
+                return nid, addr
+
+        return self.node.hex_id, self.node.addr
+
+    async def submit(self, func, *args, timeout=30.0, **kwargs):
+        nid, addr = await self._choose(set())
+
+        self.inflight[nid] += 1
+
+        try:
+            return await self.run_remote(
+                addr,
+                func,
+                args,
+                kwargs,
+                timeout
+            )
+        finally:
+            self.inflight[nid] -= 1
