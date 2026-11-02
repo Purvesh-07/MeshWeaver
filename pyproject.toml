@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "meshweaver"
+version = "0.1.0"
+description = "Zero-infrastructure P2P async task broker"
+requires-python = ">=3.10"
+dependencies = [
+    "cloudpickle>=3.0",
+    "rich>=13"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "ruff",
+    "mypy",
+    "build"
+]
+
+[project.scripts]
+meshweaver = "meshweaver.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

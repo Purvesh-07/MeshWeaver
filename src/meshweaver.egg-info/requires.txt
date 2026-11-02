@@ -1,0 +1,9 @@
+cloudpickle>=3.0
+rich>=13
+
+[dev]
+pytest
+pytest-asyncio
+ruff
+mypy
+build

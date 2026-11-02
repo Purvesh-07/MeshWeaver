@@ -1,0 +1,2 @@
+[console_scripts]
+meshweaver = meshweaver.cli:main

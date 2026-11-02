@@ -1,0 +1,9 @@
+pyproject.toml
+src/meshweaver/__init__.py
+src/meshweaver/__main__.py
+src/meshweaver.egg-info/PKG-INFO
+src/meshweaver.egg-info/SOURCES.txt
+src/meshweaver.egg-info/dependency_links.txt
+src/meshweaver.egg-info/entry_points.txt
+src/meshweaver.egg-info/requires.txt
+src/meshweaver.egg-info/top_level.txt

@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: meshweaver
+Version: 0.1.0
+Summary: Zero-infrastructure P2P async task broker
+Requires-Python: >=3.10
+Requires-Dist: cloudpickle>=3.0
+Requires-Dist: rich>=13
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-asyncio; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
+Requires-Dist: build; extra == "dev"
