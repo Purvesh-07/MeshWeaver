@@ -115,11 +115,12 @@ class Tasks:
         await send_frame(writer, data)
 
     async def _on_offer(self, msg, addr):
-        # answer: can you take one more task? (a small queue is allowed)
         busy = self.node.running_tasks >= self.cfg.task_slots * 2
-        return ('TASK_REJECT' if busy else 'TASK_ACCEPT'), 
-        {}
 
+        return (
+            'TASK_REJECT' if busy else 'TASK_ACCEPT',
+            {}
+        )
     # ================= submitter side: we send a task =================
     async def run_remote(self, addr, func, args, kwargs, timeout=30.0, task_id=None):
         payload = cloudpickle.dumps((func, args, kwargs))
@@ -168,18 +169,85 @@ class Tasks:
 
         return self.node.hex_id, self.node.addr
 
-    async def submit(self, func, *args, timeout=30.0, **kwargs):
-        nid, addr = await self._choose(set())
+    def _forget(self, nid):
+        if nid != self.node.hex_id:
+            self.gossip.mark_dead(nid)
+            self.dht.table.remove(int(nid, 16))
 
-        self.inflight[nid] += 1
+    async def submit(
+        self,
+        func,
+        *args,
+        timeout=30.0,
+        retries=2,
+        **kwargs
+    ):
+        task_id = uuid.uuid4().hex
 
-        try:
-            return await self.run_remote(
-                addr,
-                func,
-                args,
-                kwargs,
-                timeout
+        rec = {
+            'id': task_id,
+            'name': getattr(func, '__name__', 'task'),
+            'assignee': None,
+            'state': 'PENDING',
+            'attempt': 0,
+            'started': time.time(),
+        }
+
+        self.records[task_id] = rec
+
+        if len(self.records) > 200:
+            self.records.pop(next(iter(self.records)))
+
+        excluded = set()
+
+        for attempt in range(1, retries + 2):
+            rec['attempt'] = attempt
+            nid, addr = await self._choose(excluded)
+
+            rec.update(
+                assignee=nid,
+                state='RUNNING'
             )
-        finally:
-            self.inflight[nid] -= 1
+
+            self.inflight[nid] += 1
+
+            try:
+                result = await self.run_remote(
+                    addr,
+                    func,
+                    args,
+                    kwargs,
+                    timeout,
+                    task_id
+                )
+
+                rec['state'] = 'DONE'
+                return result
+
+            except RemoteTaskError:
+                rec['state'] = 'FAILED'
+                raise
+
+            except (
+                OSError,
+                EOFError,
+                asyncio.TimeoutError,
+                SecurityError
+            ):
+                rec['state'] = 'REASSIGNED'
+                excluded.add(nid)
+                self._forget(nid)
+
+                self.node.log_event(
+                    'task %s moved away from %s'
+                    % (task_id[:6], nid[:8])
+                )
+
+            finally:
+                self.inflight[nid] -= 1
+
+        rec['state'] = 'FAILED'
+
+        raise RuntimeError(
+            'task failed on every node tried'
+        )
