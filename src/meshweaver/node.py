@@ -5,6 +5,7 @@ from collections import deque
 
 from .config import Config
 from .protocol import make_msg, verify, encode, decode, new_node_id, to_hex
+from .security import ReplayGuard, RateLimiter, make_contexts
 
 log = logging.getLogger('meshweaver')
 
@@ -29,8 +30,14 @@ class Node:
         self.components = []     # DHT, Gossip, Tasks (started in this order)
         self.events = deque(maxlen=50)   # shown on the dashboard
         self.running_tasks = 0
-        self.tls_server = None   # filled in Stage 8
-        self.tls_client = None
+        self.tls_server, self.tls_client = (
+            make_contexts(self.cfg.tls)
+            if self.cfg.tls
+            else (None, None)
+        )
+
+        self.replay = ReplayGuard()
+        self.limiter = RateLimiter()
         self.transport = None
         self.on('PING', self._on_ping)
 
@@ -86,6 +93,18 @@ class Node:
 
     # ---- receiving ----
     def _on_datagram(self, data, addr):
+
+        if not self.limiter.allow(addr[0]):
+            return
+
+        msg = decode(data)
+
+        if msg is None or not verify(msg, self.cfg.key):
+            return
+
+        if self.replay.seen(msg.get('msg_id')):
+            return
+
         msg = decode(data)
         if msg is None or not verify(msg, self.cfg.key):
             return                          # drop garbage and forgeries silently

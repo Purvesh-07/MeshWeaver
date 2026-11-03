@@ -72,8 +72,14 @@ class Tasks:
     async def _on_connection(self, reader, writer):
         try:
             env = decode(await read_frame(reader, self.cfg.max_frame))
-            if env is None or not verify(env, self.cfg.key) or env.get('type') != 'TASK_SUBMIT':
-                return                                  # not from our cluster: hang up
+            if (
+                env is None
+                or not verify(env, self.cfg.key)
+                or env.get('type') != 'TASK_SUBMIT'
+                or self.node.replay.seen(env.get('msg_id'))
+            ):
+                return
+
             payload = await read_frame(reader, self.cfg.max_frame)
             if sha(payload) != env['body']['payload_hash']:
                 return                                  # payload does not match the signed hash
