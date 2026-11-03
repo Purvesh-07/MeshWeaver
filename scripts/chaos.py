@@ -7,7 +7,7 @@ from meshweaver import create_node, Config
 
 def slow(x):
     import time
-    time.sleep(4)
+    time.sleep(2)
     return x * 2
 
 
@@ -29,7 +29,7 @@ async def main():
                 slow,
                 i,
                 retries=3,
-                timeout=20
+                timeout=30
             )
         )
         for i in range(20)
