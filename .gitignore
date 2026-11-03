@@ -5,29 +5,28 @@ fresh/
 # Python cache
 __pycache__/
 *.py[cod]
-*$py.class
 
 # Build artifacts
 build/
 dist/
 *.egg-info/
 
-# Test/cache
+# Testing cache
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 
+# Coverage
+.coverage
+htmlcov/
+
 # Certificates
 certs/
 
-# IDE
+# IDEs
 .vscode/
 .idea/
 
 # OS files
 Thumbs.db
 .DS_Store
-
-# Coverage
-.coverage
-htmlcov/
