@@ -1,3 +1,5 @@
+# CLI entrypoint for MeshWeaver
+
 import argparse
 import asyncio
 import importlib.util
